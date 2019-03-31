@@ -27,14 +27,14 @@ int main(void) {
     arg.val = 0;
     semctl(semCode, 0, SETVAL, arg);
 
-    //Comienzo el proceso vista (DE PRUEBA, NO PARA EL TP)
+    //Comienzo el proceso vista (DE PRUEBA, NO PARA EL TP). El proceso vista deberia de escribir a la memoria el alfabeto
     if(fork() == 0) {
         execv("./view", (char*[]){"./view", NULL});
     }
 
     sleep(1);
 
-    //Pruebo la memoria compartida y el semaforo
+    //Pruebo la memoria compartida y el semaforo. Deberia de imprimirse el alfabeto
     waitSemaphore(semCode);
     getSemaphore(semCode);
     char* auxShmStart = (char*) shmemStart;
