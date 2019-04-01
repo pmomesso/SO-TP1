@@ -103,17 +103,15 @@ int int main(int argc, char const *argv[])
             }
         }
         //a partir de aca ver el named pipe para lectura
+        waitSemaphore(semCodePipe);
+        getSemaphore(semCodePipe);
+        //el read
+        printf("\n");
+        freeSemaphore(semCodePipe);
     }
 // lo del select a partir de lo visto en ejemplo de man
 
 
-
-    waitSemaphore(semCodePipe);
-    getSemaphore(semCodePipe);
-    char* auxShmStart = (char*) shmemStart;
-    
-    printf("\n");
-    freeSemaphore(semCodePipe);
 
     //Pruebo la memoria compartida y el semaforo. Deberia de imprimirse el alfabeto
     waitSemaphore(semCodeSh);
