@@ -31,5 +31,5 @@ int main(void) {
         auxStart++;
     }
     freeSemaphore(semCode);
-
+    return 0;
 }

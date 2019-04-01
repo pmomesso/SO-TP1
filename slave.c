@@ -1,14 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include "tp1.h"
+#include <sys/sem.h>
+#include <sys/ipc.h>
 
 int main(void) {
 
+    int hashWriteFd
     char* arguments[3];
     arguments[0] = "/usr/bin/md5sum";
     arguments[2] = NULL;
@@ -18,6 +22,16 @@ int main(void) {
 
     char* buff1 = NULL;
     ssize_t size = 0;
+
+    //accedo a named pipe solo para escritura
+    hashWriteFd = open(FIFO_FILE, O_WRONLY);
+
+    //Obtengo la referencia al semaforo para pipe
+    int semCodePipe = semget(SEM_KEY, 0, 0200);
+    if(semCodePipe < 0) {
+        perror("PROBLEM DURING EXECUTION\n");
+        exit(1);
+    }
 
     while((bytesRead = getline(&buff1, &size, stdin)) > 0) {
         int fd[2];
@@ -43,8 +57,11 @@ int main(void) {
         }
         buff2[i - 1] = '\0';
         close(fd[READ_END]);
-        printf("%s\n", buff2);
-        
+        waitSemaphore(semCodePipe);
+        getSemaphore(semCodePipe);
+        write(hashWriteFd,buff2,i);
+        freeSemaphore(semCodePipe);
+        //printf("%s\n", buff2);
     }
 
     free(buff1);
