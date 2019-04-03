@@ -14,19 +14,10 @@ int main(void) {
     arguments[2] = NULL;
     arguments[1] = malloc(sizeof(char)*256);
 
-    size_t bytesRead;
+    ssize_t bytesRead;
 
     char* buff1 = NULL;
     ssize_t size = 0;
-
-    printf("antes del while\n");
-
-    // char buff[256];
-    // int i = 0;
-    // while(read(0, buff + i, 1) > 0) {
-    //     printf("%c", buff[i]);
-    //     i++;
-    // }
 
     while((bytesRead = getline(&buff1, &size, stdin)) != -1) {
 
@@ -35,8 +26,9 @@ int main(void) {
             printf("%s\n", strerror(errno));
         }
         if(fork() == 0) {
-            close(1);
+            close(STDOUT_FILENO);
             dup(fd[WRITE_END]);
+            close(fd[WRITE_END]);
             strcpy(arguments[1], buff1);
             arguments[1][bytesRead - 1] = '\0';
             if(execv("/usr/bin/md5sum", arguments) < 0) {
@@ -45,21 +37,16 @@ int main(void) {
         } else {
             close(fd[WRITE_END]);
         }
-        char buff2[256];
+        char buff2[256] = {0};
         int i = 0;
         while(read(fd[READ_END], buff2 + i, 1) > 0) {
             i++;
         }
         buff2[i - 1] = '\0';
         close(fd[READ_END]);
-        printf("%s\n", buff2);
+        write(STDOUT_FILENO,buff2,i);
 
-        printf("bytes read %d\n", bytesRead);
-
-        sleep(3);        
     }
-
-    printf("bytesread %d\n", bytesRead);
 
     free(buff1);
     free(arguments[1]);

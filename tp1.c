@@ -2,11 +2,6 @@
 #include <sys/sem.h>
 #include <sys/ipc.h>
 
-struct Slave {
-    pid_t pid;
-    int fd[2];
-};
-
 void getSemaphore(int semCode) {
     union a {
         int val;

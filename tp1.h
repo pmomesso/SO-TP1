@@ -6,10 +6,8 @@
 #define WRITE_END 1
 
 #define SEM_SHMEM_KEY 1234
-#define SEM_PIPE_KEY 1234
 #define SHM_SIZE 1
 
-#define FIFO_NAME "myfifo"
 
 /*Para uso en main.c*/
 typedef struct Slave tSlave;
