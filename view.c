@@ -75,6 +75,8 @@ int main(void) {
             prevRead = read;
             // printf("view.c after free semaphore value: %d\n", semctl(semCode, 0, GETVAL));
             // sleep(1);
+        } else {
+            sleep(1);
         }
         // sleep(1);
         // fprintf(stderr, "%d\n", *auxStart);

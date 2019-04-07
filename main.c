@@ -16,6 +16,8 @@
 #define NUM_SLAVES 5
 #define INITIAL_LOAD 1
 #define DEST_FILE_NAME "hashResults.txt"
+#define MAX_ESTIMATED_FILES 1500
+#define AVERAGE_ESTIMATED_HASH_LENGTH 40
 
 int getHighestReadDescriptor(tSlave* slave, int numberOfSlaves);
 size_t flushFileDescriptor(int sourceFileDescriptor, int* destFileDescriptors, int numDescriptors);
@@ -35,8 +37,13 @@ TODO
 
 int main(int argc, char* args[]) {
 
+    if(argc - 1 > MAX_ESTIMATED_FILES) {
+        fprintf(stderr, "AMOUNT OF FILES TOO LARGE\n");
+        exit(1);
+    }
+
     //Configuro la memoria compartida
-    int shmcode = shmget(SHMEM_KEY, 1500*40*sizeof(int), IPC_CREAT | 0600);
+    int shmcode = shmget(SHMEM_KEY, MAX_ESTIMATED_FILES*AVERAGE_ESTIMATED_HASH_LENGTH, IPC_CREAT | 0600);
     void* shmemStart;
     if((shmemStart = shmat(shmcode, NULL, 0)) == (void*)-1) {
         perror("MAIN.C: ERROR WHILE CONFIGURING SHARED MEMORY\n");
