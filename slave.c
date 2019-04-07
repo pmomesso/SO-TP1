@@ -9,8 +9,7 @@
 
 int main(void) {
 
-    // sleep(1);
-
+    //Argumentos para ejecutar el md5sum.
     char* arguments[3];
     arguments[0] = "/usr/bin/md5sum";
     arguments[2] = NULL;
@@ -21,16 +20,16 @@ int main(void) {
     char* buff1 = NULL;
     ssize_t size = 0;
 
-    // perror("antes del while\n");
-
+    //Leo hasta que  un end of file de la salida estandar.
     while((bytesRead = getline(&buff1, &size, stdin)) > 0) {
         int fd[2];
+        //Abro el pipe para comunicarme con el proceso de md5sum.
         if(pipe(fd) < 0) {
             perror("SLAVE.C: ERROR WHILE OPENING PIPE\n");
             perror(strerror(errno));
             exit(1);
         }
-        // fprintf(stderr, "child of pid: %d; read: %s\n", getpid(), buff1);
+        //Hago el fork con el proceso md5sum.
         if(fork() == 0) {
             close(1);
             dup(fd[WRITE_END]);
@@ -44,27 +43,20 @@ int main(void) {
         } else {
             close(fd[WRITE_END]);
         }
+        //Leo del pipe del hijo el valor del hash.
         char buff2[256];
         int i = 0;
         while(read(fd[READ_END], buff2 + i, 1) > 0) {
             i++;
         }
         buff2[i - 1] = '\0';
-        // fprintf(stderr, "%s\n", buff2);
         close(fd[READ_END]);
+        //Imprimo por salida estandar el valor del hash.
         printf("%s\n", buff2);
-
-        // fprintf(stderr, "I read %d bytes\n", bytesRead);
-        // fprintf(stderr, "I wrote %s %d\n", buff2, getpid());
-        // perror(bytesRead);
         fflush(stdout);
         
     }
-
-    // perror(bytesRead);
-
-    // fprintf(stderr, "finish %d\n", getpid());
-
+    //Libero la memoria de los buffer.
     free(buff1);
     free(arguments[1]);
 

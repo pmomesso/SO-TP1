@@ -22,18 +22,13 @@
 int getHighestReadDescriptor(tSlave* slave, int numberOfSlaves);
 size_t flushFileDescriptor(int sourceFileDescriptor, int* destFileDescriptors, int numDescriptors);
 
+//Estructura de esclavo con dos pipes de comunicacion, un contador para la cantidad de archivos en procesamiento y un PID.
 struct Slave {
     int fdParentToChild[2];
     int fdChildToParent[2];
     int jobs;
     pid_t pid;
 };
-
-/*
-TODO
-1) Arreglar escritura a hijos
-2) Arreglar lectura de hijos
-*/
 
 int main(int argc, char* args[]) {
 
@@ -52,7 +47,6 @@ int main(int argc, char* args[]) {
     *(int*)shmemStart = 0;
     *(int*)(shmemStart + 4) = 0;
     *(int*)(shmemStart + 8) = 0;
-    // return 0;
 
     int sharedMemoryDescriptor = shmcode;
     int destFileDescriptor = open(DEST_FILE_NAME, O_CREAT | O_WRONLY);
@@ -68,39 +62,6 @@ int main(int argc, char* args[]) {
     } arg;
     arg.val = 0;
     semctl(semCodeShmem, 0, SETVAL, arg);
-
-    // if(fork() == 0) {
-    //     if(execv("./viewProcess", (char*[]){"./viewProcess", NULL}) < 0) {
-    //         perror("");
-    //     }
-    // }
-
-    // int* auxPointer = (unsigned int*) (shmemStart + 4);
-    // int* auxStart = (int*) shmemStart;
-    // *auxStart = 0;
-    // for(int i = 0; i < 1024; i++) {
-    //     // printf("%X%c", i, (i%20==0 && i != 0)?'\n':' ');
-    //     // sleep(1);
-    //     waitSemaphore(semCodeShmem);
-    //     getSemaphore(semCodeShmem);
-    //     // printf("main.c semaphore value: %d\n", semctl(semCodeShmem, 0, GETVAL));
-    //     // sleep(1);
-    //     *auxPointer = i;
-    //     auxPointer += 4;
-    //     *auxStart += 1;
-    //     freeSemaphore(semCodeShmem);
-    //     // printf("main.c semaphore value: %d\n", semctl(semCodeShmem, 0, GETVAL));
-    //     sleep(1);
-    //     // printf("%X", i);
-    // }
-
-    // waitSemaphore(semCodeShmem);
-    // getSemaphore(semCodeShmem);
-    // *auxStart = -1;
-    // freeSemaphore(semCodeShmem);
-
-    // return 0;
-
     tSlave slaves[NUM_SLAVES];
     for(int i = 0; i < NUM_SLAVES; i++) {
         slaves[i].jobs = 0;
@@ -119,11 +80,8 @@ int main(int argc, char* args[]) {
             strcat(buff, "\n");
             write(slaves[i].fdParentToChild[WRITE_END], buff, strlen(buff));
             slaves[i].jobs++;
-            // printf("wrote: %s to %d'th child. He now has %d jobs\n", buff, i, slaves[i].jobs);
             argFile++;
         }
-        // write(slaves[i].fdParentToChild[WRITE_END], "", 1);
-        // write(slaves[i].fdChildToParent[WRITE_END], "", 1);
     }
 
     /*Forkeo. Creo los esclavos y configuro sus pipes para que se comuniquen con la aplicacion.
@@ -134,23 +92,17 @@ int main(int argc, char* args[]) {
             /*El esclavo no debe leer de stdin, sino del pipe Parent to Child*/
             close(STDIN_FILENO); 
             dup(slaves[i].fdParentToChild[READ_END]);
-
+            close(slaves[i].fdParentToChild[READ_END]);
             /*El esclavo no debe escribir a stdout, sino al pipe Child to Parent*/
             close(STDOUT_FILENO);
             dup(slaves[i].fdChildToParent[WRITE_END]);
+            close(slaves[i].fdChildToParent[WRITE_END]);
 
             /*El esclavo no esta interesado en leer de Child to Parent*/
             close(slaves[i].fdChildToParent[READ_END]);
 
             /*El esclavo no esta interesado en escribir a Parent to Child*/
             close(slaves[i].fdParentToChild[WRITE_END]);
-
-            // for(int j = 0; j < i; j++) {
-            //     close(slaves[j].fdParentToChild[READ_END]);
-            //     close(slaves[j].fdParentToChild[WRITE_END]);
-            //     close(slaves[j].fdChildToParent[READ_END]);
-            //     close(slaves[j].fdChildToParent[WRITE_END]);
-            // }
 
             if(execv("./slaveProcess", (char*[]){"./slaveProcess", NULL}) < 0) {
                 perror("MAIN.C: ERROR WHILE FORKING TO SLAVE\n");
@@ -168,6 +120,7 @@ int main(int argc, char* args[]) {
         }
     }
 
+    //Estructuras para las operaciones de semaforo.
     struct sembuf waitOp;
     waitOp.sem_num = 0;
     waitOp.sem_flg = 0;
@@ -183,69 +136,64 @@ int main(int argc, char* args[]) {
     getSemOp.sem_num = 0;
     getSemOp.sem_op = 1;
 
+    //Obtengo el file descriptor mas alto para el select.
     int status;
     char characters[256];
     int highestOne = getHighestReadDescriptor(slaves, NUM_SLAVES);
+
     int closedPipe = 0;
     int jobsDone = 0;
     fd_set readDescriptorSet;
     char a;
     int fileIndex = 1 + INITIAL_LOAD*NUM_SLAVES;
     char argument[256];
-
+    //Punteros para la  memoria compartida.
     char* auxPointer = (char*) (shmemStart + 8);
     int* countPointer = (int*) (shmemStart + 4);
     unsigned int * auxStart;
     auxStart = (int*) shmemStart;
     int auxCounter = 0;
-    int resultsFd = open("hashResults.txt",O_CREAT | O_RDWR ,0777);
+    //Creo o abro el archivo a escribir los hashes.
+    int resultsFd = open(DEST_FILE_NAME,O_CREAT | O_RDWR ,0777);
     sleep(1);
     
     while(jobsDone < numFiles) {
-        // sleep(1);
+        //Reinicio el set de descriptores.
         FD_ZERO(&readDescriptorSet);
         for(int i = 0; i < NUM_SLAVES; i++) {
             FD_SET(slaves[i].fdChildToParent[READ_END], &readDescriptorSet);
         }
+        //Hago el select para obtener los pipes para leer.
         if(select(highestOne + 1, &readDescriptorSet, NULL, NULL, NULL) > 0) {
-            // printf("found descriptors\n");
             for(int i = 0; i < NUM_SLAVES; i++) {
                 if(FD_ISSET(slaves[i].fdChildToParent[READ_END], &readDescriptorSet)) {
                     while(read(slaves[i].fdChildToParent[READ_END], &a, 1) > 0) {
-                        // fprintf(stderr, "main.c Before semaphore %d\n", semctl(semCodeShmem, 0, GETVAL));
-                        // waitSemaphore(semCodeShmem);
-                        // getSemaphore(semCodeShmem);
+                        //Espero al semaforo y lo pido.
                         semop(semCodeShmem, &waitOp, 1);
                         semop(semCodeShmem, &getSemOp, 1);
-                        // fprintf(stderr, "main.c Got semaphore %d\n", semctl(semCodeShmem, 0, GETVAL));
-                        // fprintf(stderr, "FREE\n");
-                        // fprintf(stderr, "main.c before free %d\n", semctl(semCodeShmem, 0, GETVAL));
+                        //Escribo el caracter en la memoria compartida.
                         *auxPointer = a;
-                        // fprintf(stderr, "main.c before free %d\n", semctl(semCodeShmem, 0, GETVAL));
-                        // fprintf(stderr, "main.c before free %d\n", semctl(semCodeShmem, 0, GETVAL));
                         auxPointer++;
                         auxCounter++;
-                        // fprintf(stderr, "main.c before free %d\n", semctl(semCodeShmem, 0, GETVAL));
-                        // printf("%p\n", auxPointer);
-                        // freeSemaphore(semCodeShmem);
+                        //Libero el semaforo
                         semop(semCodeShmem, &freeOp, 1);
-                        // fprintf(stderr, "main.c after semaphore %d\n", semctl(semCodeShmem, 0, GETVAL));
+                        //Escribo al archivo de texto.
                         write(resultsFd,&a,1);
+
                         if(a == '\n' || a == '\0') {
+                            //Termino de leer un hash.
                             jobsDone++;
-                            // waitSemaphore(semCodeShmem);
-                            // getSemaphore(semCodeShmem);
-                            // fprintf(stderr, "main.c Before semaphore %d\n", semctl(semCodeShmem, 0, GETVAL));
+                            //Espero al semaforo y lo pido.
                             semop(semCodeShmem, &waitOp, 1);
                             semop(semCodeShmem, &getSemOp, 1);
-                            // fprintf(stderr, "main.c After semaphore %d\n", semctl(semCodeShmem, 0, GETVAL));
-                            // printf("done it\n");
+                            //Actualizo en memoria compartida hasta donde leer.
                             *countPointer += auxCounter;
-                            // freeSemaphore(semCodeShmem);
+                            //Libero el semaforo.
                             semop(semCodeShmem, &freeOp, 1);
                             auxCounter = 0;
                             slaves[i].jobs--;
                             if(slaves[i].jobs == 0) {
+                                //Envio un archivo que falte al esclavo si no tiene archivos por procesar.
                                 if(fileIndex < argc) {
                                     strcpy(argument, args[fileIndex]);
                                     strcat(argument, "\n");
@@ -259,13 +207,9 @@ int main(int argc, char* args[]) {
                 }
             }
        }
-        // printf("TERMINE\n");
-        // fflush(stdout);
     }
-
+    //Escribo el valor -1 al principio de la memoria compartida para informar al proceso vista que termino.
     *auxStart = -1;
-
-    fprintf(stderr,"TERMINE\n");
     fflush(stdout);
     close(resultsFd);
     return 0;
@@ -277,9 +221,6 @@ size_t flushFileDescriptor(int sourceFileDescriptor, int* destFileDescriptors, i
     size_t bytesWritten = 0;
     int fd = open(DEST_FILE_NAME, O_WRONLY);
     while(read(sourceFileDescriptor, &buff, 1) > 0) {
-        // for(int fileDescriptorIndex = 0; fileDescriptorIndex < numDescriptors; fileDescriptorIndex++) {
-        //     write(destFileDescriptors[fileDescriptorIndex], (void*)&buff, 1);
-        // }
         printf("%c", buff);
         bytesWritten++;
     }

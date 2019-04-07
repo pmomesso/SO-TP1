@@ -23,9 +23,7 @@ int main(void) {
         exit(1);
     }
 
-    // printf("hola");
-    // return 0;
-
+    //Estructuras para las operaciones con semaforos.
     struct sembuf waitOp;
     waitOp.sem_num = 0;
     waitOp.sem_flg = 0;
@@ -47,41 +45,28 @@ int main(void) {
     int read = 0;
     int prevRead = 0;
     int toRead = 0;
-    printf("before loop. Value at the start of shmem: %d\n", *auxStart);
     sleep(1);
+    //Sigo hasta que lea -1 en el principio de la memoria y hasta que ya no haya mas hashes para leer en el buffer.
     while(*auxStart != -1 || read < *countPointer) {
-        // printf("inside the loop\n");
+        //Obtengo hasta donde leer.
         toRead = *countPointer;
-        // printf("%p countPointer: %d\n", countPointer, toRead);
-        // printf("read: %d\n", read);
-        // printf("entro\n");
         if(read < toRead) {
-            // printf("view.c before wait semaphore value: %d\n", semctl(semCode, 0, GETVAL));
-            // getSemaphore(semCode);
+            //Espero y pido el semaforo.
             semop(semCode, &waitOp, 1);
             semop(semCode, &getSemOp, 1);
-            // printf("view.c after wait semaphore value: %d\n", semctl(semCode, 0, GETVAL));
-            // printf(" -- ");
-            // perror("hola\n");
+           //Escribo por salida estandar el caracter que esta en la memoria.
             write(STDOUT_FILENO, auxPointer, toRead - read);
             fflush(stdout);
-            // printf("hola\n");
-            // printf("\ndone pointer\n");
-            // freeSemaphore(semCode);
+            // Libero el semaforo.
             semop(semCode, &freeOp, 1);
-            // printf("view.c after wait semaphore value: %d\n", semctl(semCode, 0, GETVAL));
             read += toRead - read;
             auxPointer += toRead - prevRead;
             prevRead = read;
-            // printf("view.c after free semaphore value: %d\n", semctl(semCode, 0, GETVAL));
-            // sleep(1);
         } else {
             sleep(1);
         }
-        // sleep(1);
-        // fprintf(stderr, "%d\n", *auxStart);
     }
 
-    printf("finish\n");
+    printf("Done!\n");
 
 }
