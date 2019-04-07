@@ -198,6 +198,7 @@ int main(int argc, char* args[]) {
     unsigned int * auxStart;
     auxStart = (int*) shmemStart;
     int auxCounter = 0;
+    int resultsFd = open("hashResults.txt",O_CREAT | O_RDWR ,0777);
     sleep(1);
     
     while(jobsDone < numFiles) {
@@ -229,6 +230,7 @@ int main(int argc, char* args[]) {
                         // freeSemaphore(semCodeShmem);
                         semop(semCodeShmem, &freeOp, 1);
                         // fprintf(stderr, "main.c after semaphore %d\n", semctl(semCodeShmem, 0, GETVAL));
+                        write(resultsFd,&a,1);
                         if(a == '\n' || a == '\0') {
                             jobsDone++;
                             // waitSemaphore(semCodeShmem);
@@ -265,7 +267,7 @@ int main(int argc, char* args[]) {
 
     fprintf(stderr,"TERMINE\n");
     fflush(stdout);
-
+    close(resultsFd);
     return 0;
 
 }
