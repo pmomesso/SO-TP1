@@ -48,7 +48,7 @@ int main(void) {
     int toRead = 0;
     sleep(1);
     //Sigo hasta que lea -1 en el principio de la memoria y hasta que ya no haya mas hashes para leer en el buffer.
-    while(*auxStart != -1 || read < *countPointer) {
+    while(*auxStart != APPLICATION_FINISHED || read < *countPointer) {
         //Obtengo hasta donde leer.
         toRead = *countPointer;
         if(read < toRead) {

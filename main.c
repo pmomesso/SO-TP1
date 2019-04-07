@@ -212,7 +212,7 @@ int main(int argc, char* args[]) {
        }
     }
     //Escribo el valor -1 al principio de la memoria compartida para informar al proceso vista que termino.
-    *auxStart = -1;
+    *auxStart = APPLICATION_FINISHED;
     fflush(stdout);
     close(resultsFd);
     return 0;

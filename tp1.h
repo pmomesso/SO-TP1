@@ -12,7 +12,7 @@
 #define SHMEM_KEY 0x1234
 #define SHM_SIZE 1
 
-#define FIFO_NAME "myfifo"
+#define APPLICATION_FINISHED -1
 
 /*Para uso en main.c*/
 typedef struct Slave tSlave;
