@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -18,7 +19,7 @@ int main(void) {
     ssize_t bytesRead;
 
     char* buff1 = NULL;
-    ssize_t size = 0;
+    size_t size = 0;
 
     //Leo hasta que  un end of file de la salida estandar.
     while((bytesRead = getline(&buff1, &size, stdin)) > 0) {

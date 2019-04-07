@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <sys/shm.h>
 #include <stdlib.h>
@@ -47,9 +48,6 @@ int main(int argc, char* args[]) {
     *(int*)shmemStart = 0;
     *(int*)(shmemStart + 4) = 0;
     *(int*)(shmemStart + 8) = 0;
-
-    int sharedMemoryDescriptor = shmcode;
-    int destFileDescriptor = open(DEST_FILE_NAME, O_CREAT | O_WRONLY);
 
     //Configuro el semaforo para memoria compartida
     int semCodeShmem = semget(SEM_SHMEM_KEY, 1, IPC_CREAT | 0600);
@@ -104,6 +102,14 @@ int main(int argc, char* args[]) {
             /*El esclavo no esta interesado en escribir a Parent to Child*/
             close(slaves[i].fdParentToChild[WRITE_END]);
 
+            /*Por correctitud los esclavos solamente deben tener abiertos los pipes que usan y ninguno mas*/
+            for(int j = 0; j < i; j++) {
+                close(slaves[j].fdChildToParent[READ_END]);
+                close(slaves[j].fdChildToParent[WRITE_END]);
+                close(slaves[j].fdParentToChild[READ_END]);
+                close(slaves[j].fdParentToChild[WRITE_END]);     
+            }
+
             if(execv("./slaveProcess", (char*[]){"./slaveProcess", NULL}) < 0) {
                 perror("MAIN.C: ERROR WHILE FORKING TO SLAVE\n");
                 exit(1);
@@ -137,11 +143,8 @@ int main(int argc, char* args[]) {
     getSemOp.sem_op = 1;
 
     //Obtengo el file descriptor mas alto para el select.
-    int status;
-    char characters[256];
     int highestOne = getHighestReadDescriptor(slaves, NUM_SLAVES);
 
-    int closedPipe = 0;
     int jobsDone = 0;
     fd_set readDescriptorSet;
     char a;
@@ -150,9 +153,10 @@ int main(int argc, char* args[]) {
     //Punteros para la  memoria compartida.
     char* auxPointer = (char*) (shmemStart + 8);
     int* countPointer = (int*) (shmemStart + 4);
-    unsigned int * auxStart;
+    int * auxStart;
     auxStart = (int*) shmemStart;
     int auxCounter = 0;
+
     //Creo o abro el archivo a escribir los hashes.
     int resultsFd = open(DEST_FILE_NAME,O_CREAT | O_RDWR ,0777);
     sleep(1);
@@ -179,7 +183,6 @@ int main(int argc, char* args[]) {
                         semop(semCodeShmem, &freeOp, 1);
                         //Escribo al archivo de texto.
                         write(resultsFd,&a,1);
-
                         if(a == '\n' || a == '\0') {
                             //Termino de leer un hash.
                             jobsDone++;
@@ -214,17 +217,6 @@ int main(int argc, char* args[]) {
     close(resultsFd);
     return 0;
 
-}
-
-size_t flushFileDescriptor(int sourceFileDescriptor, int* destFileDescriptors, int numDescriptors) {
-    char buff;
-    size_t bytesWritten = 0;
-    int fd = open(DEST_FILE_NAME, O_WRONLY);
-    while(read(sourceFileDescriptor, &buff, 1) > 0) {
-        printf("%c", buff);
-        bytesWritten++;
-    }
-    return bytesWritten;
 }
 
 int getHighestReadDescriptor(tSlave* slave, int numberOfSlaves) {

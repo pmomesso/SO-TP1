@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <unistd.h>
 #include <sys/sem.h>
 #include <sys/ipc.h>
@@ -66,7 +67,5 @@ int main(void) {
             sleep(1);
         }
     }
-
-    printf("Done!\n");
 
 }
