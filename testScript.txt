@@ -1,7 +1,7 @@
 #!/bin/bash
-echo "Testing for binary file a.out: "
-slaveProcessOutput=`echo a.out | ./slaveProcess`
-md5sumOutput=`md5sum a.out`
+echo "Testing for binary file mainApplication: "
+slaveProcessOutput=`echo mainApplication | ./slaveProcess`
+md5sumOutput=`md5sum mainApplication`
 echo "output of md5sum: " $md5sumOutput
 echo "output of slaveProcess: " $slaveProcessOutput
 if [ "$md5sumOutput" == "$slaveProcessOutput" ]; then
