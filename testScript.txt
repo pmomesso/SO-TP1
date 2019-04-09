@@ -1,0 +1,22 @@
+#!/bin/bash
+echo "Testing for binary file a.out: "
+slaveProcessOutput=`echo a.out | ./slaveProcess`
+md5sumOutput=`md5sum a.out`
+echo "output of md5sum: " $md5sumOutput
+echo "output of slaveProcess: " $slaveProcessOutput
+if [ "$md5sumOutput" == "$slaveProcessOutput" ]; then
+  echo "Values are equal"
+else
+  echo "Values are not equals"
+fi
+echo "1" > 1.txt
+echo "Testing for text file 1.txt:"
+slaveProcessOutput=`echo a.out | ./slaveProcess`
+md5sumOutput=`md5sum a.out`
+echo "output of md5sum: " $md5sumOutput
+echo "output of slaveProcess: " $slaveProcessOutput
+if [ "$md5sumOutput" == "$slaveProcessOutput" ]; then
+  echo "Values are equal"
+else
+  echo "Values are not equals"
+fi
